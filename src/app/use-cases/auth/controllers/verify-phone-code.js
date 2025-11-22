@@ -1,0 +1,61 @@
+// controllers/auth/verifyPhoneCode.js
+const User = require("../../../models/User");
+const generateAccessToken = require("../../../utils/generate-access-token");
+const generateRefreshToken = require("../../../utils/generate-refresh-token");
+const encryptRefreshToken = require("../../../utils/encrypt-refresh-token");
+const Session = require("../../../models/Session");
+const moment = require("moment");
+
+const verifyPhoneCode = async (req, res) => {
+  try {
+    const { phone_number, code } = req.body;
+
+    const user = await User.findOne({ phone_number })
+    .select("username name bio phone_code phone_number is_online profile_image");
+
+    if (!user) return res.status(400).json({ message: "Telefone não encontrado" });
+
+  
+    if (user.phone_code !== code || Date.now() > user.phone_code_expires) {
+      return res.status(400).json({ message: "Código inválido ou expirado" });
+    }
+
+    // Limpa código e ativa conta
+    user.phone_code = undefined;
+    user.phone_code_expires = undefined;
+    user.account_verification_status = "verified";
+    user.is_online = true;
+    user.last_seen = new Date();
+
+    await user.save();
+
+    // Gera tokens
+    const accessToken = generateAccessToken(user, "30d");
+    const refreshToken = generateRefreshToken(user, "1y");
+    const encrypted = encryptRefreshToken(refreshToken);
+
+    const session = new Session({
+      user: user._id,
+      token: encrypted.encrypted_refresh_token,
+      crypto: { key: encrypted.key, iv: encrypted.iv },
+      ip_address: req.ip,
+      user_agent: req.headers["user-agent"],
+      authentication_method: "phone",
+      expires_at: moment().add(1, "year").toDate()
+    });
+
+    await session.save();
+
+    return res.status(200).json({
+      message: "Login realizado com sucesso",
+      access_token: accessToken,
+      session_id: session.id,
+      user
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Erro interno" });
+  }
+};
+
+module.exports = verifyPhoneCode;
