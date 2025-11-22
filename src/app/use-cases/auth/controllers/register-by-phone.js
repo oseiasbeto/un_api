@@ -1,6 +1,6 @@
 // controllers/auth/registerByPhone.js
 const User = require("../../../models/User");
-const senderMessage = require("../../../services/queroSMS")
+const senderMessage = require("../../../services/quero-sms")
 
 const registerByPhone = async (req, res) => {
   try {

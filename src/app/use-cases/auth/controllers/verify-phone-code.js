@@ -11,7 +11,7 @@ const verifyPhoneCode = async (req, res) => {
     const { phone_number, code } = req.body;
 
     const user = await User.findOne({ phone_number })
-    .select("username name bio phone_code phone_number is_online profile_image");
+    .select("username name bio phone_code player_id_onesignal phone_number is_online profile_image");
 
     if (!user) return res.status(400).json({ message: "Telefone não encontrado" });
 

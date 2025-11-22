@@ -2,6 +2,7 @@
 const Message = require('../../../models/Message');
 const Conversation = require('../../../models/Conversation');
 const { getIO } = require("../../../services/socket");
+const sendPushNotification = require("../../../services/send-push-notification");
 
 const sendMessage = async (req, res) => {
   try {
@@ -12,7 +13,7 @@ const sendMessage = async (req, res) => {
     const conversation = await Conversation.findById(convId)
       .populate({
         path: "participants",
-        select: "name username profile_image.url socket_id is_online last_seen"
+        select: "name username player_id_onesignal profile_image.url socket_id is_online last_seen"
       });
 
     if (!conversation) {
@@ -23,7 +24,7 @@ const sendMessage = async (req, res) => {
     const senderInConversation = conversation.participants.some(
       p => p._id.toString() === senderId
     );
-    
+
     if (!senderInConversation) {
       return res.status(403).json({ message: "Você não faz parte desta conversa" });
     }
@@ -88,7 +89,7 @@ const sendMessage = async (req, res) => {
     await conversation.save();
 
     const otherUser = conversation.participants.find(p => p._id.toString() !== senderId)
-    
+
     // 5. Emite para todos os participantes online
     const io = getIO();
     const messageToSend = {
@@ -121,7 +122,7 @@ const sendMessage = async (req, res) => {
       reply_to: populatedMessage.reply_to
     };
 
-    conversation.participants.forEach(participant => {
+    conversation.participants.forEach(async participant => {
       const isSender = participant._id.toString() === senderId;
 
       const msg = {
@@ -159,6 +160,14 @@ const sendMessage = async (req, res) => {
 
       if (participant.socket_id) {
         io.to(participant.socket_id).emit('newMessage', msg);
+      } else {
+        if (participant?.player_id_onesignal) {
+          await sendPushNotification({
+            playerId: participant?.player_id_onesignal,
+            title: msg?.conversation?.name || 'Novo papo',
+            message: msg?.conversation?.last_message.content || "..."
+          })
+        }
       }
     });
 

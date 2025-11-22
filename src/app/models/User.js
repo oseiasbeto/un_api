@@ -53,6 +53,8 @@ const userSchema = new mongoose.Schema(
     last_seen: { type: Date, default: null },
     socket_id: { type: String, default: null },
 
+    player_id_onesignal: { type: String, default: null },
+
     // === PRIVACIDADE (como no Telegram) ===
     privacy: {
       last_seen: {

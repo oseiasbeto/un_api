@@ -7,11 +7,13 @@ const protectedRoute = require("../../middlewares/protected-route")
 const getUserById = require("./controllers/get-user-by-id")
 const searchUsers = require("./controllers/search-users")
 const getUsersForNewMessage = require("./controllers/get-users-for-new-messages")
+const updateUserById = require("./controllers/update-user-by-id")
 
 // configurando as rotas
 router.get("/new-message", protectedRoute, getUsersForNewMessage)
 router.get("/search", protectedRoute, searchUsers)
 router.get("/:id", protectedRoute, getUserById)
+router.put("/", protectedRoute, updateUserById)
 
 // exportando as rotas
 module.exports = router
