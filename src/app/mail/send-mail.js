@@ -31,7 +31,7 @@ async function sendMail(to, templateName, subject, data) {
 
         console.log(`📤 Enviando email para ${to}...`);
         const info = await transporter.sendMail({
-            from: '1kole <anacleto@1kole.com>',
+            from: 'PapoRápido <geral@paporápido.com>',
             to,
             subject,
             html,
