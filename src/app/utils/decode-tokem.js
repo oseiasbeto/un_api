@@ -2,11 +2,12 @@ const { verify } = require("jsonwebtoken");
 
 const decodeTokem = (token, secreetKey) => {
     try {
-        const decoded = verify(token, secreetKey)
-        return decoded
+        const decoded = verify(token, secreetKey);
+        return decoded;
     } catch (error) {
-        throw new Error('Token invalid.')
+        // Retorna null em vez de lançar exceção
+        return null;
     }
 }
 
-module.exports = decodeTokem
+module.exports = decodeTokem;
