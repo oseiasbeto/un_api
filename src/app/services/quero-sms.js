@@ -4,9 +4,9 @@ const axios = require("axios");
 // Função principal para envio de emails
 async function sendMessage({to, message}) {
     try {
-        const apiUrl = 'https://api.querosms.com/api/v1/sms/send'
-        const apiKey = process.env.QSMSAPIKEY
-        const senderId = process.env.QSMSSENDERID
+        const apiUrl = process.env.QSMS_APIURL
+        const apiKey = process.env.QSMS_APIKEY
+        const senderId = process.env.QSMS_SENDER_ID
 
         console.log(to)
 
