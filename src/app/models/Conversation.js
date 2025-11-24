@@ -91,12 +91,6 @@ conversationSchema.index({ name: 'text', description: 'text' })
 conversationSchema.index({ username: 1 })
 conversationSchema.index({ invite_link: 1 })
 
-// Saved Messages: só um por usuário
-conversationSchema.index(
-  { 'participants.0': 1, is_saved_messages: true },
-  { unique: true }
-)
-
 // === MÉTODO ESTÁTICO: Busca ou cria DM ===
 conversationSchema.statics.findOrCreateDirect = async function (userId1, userId2) {
   const sortedIds = [userId1, userId2].sort()
