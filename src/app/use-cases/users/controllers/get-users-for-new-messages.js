@@ -18,7 +18,7 @@ const getUsersForNewMessage = async (req, res) => {
       .populate({
         path: 'participants',
         match: { _id: { $ne: currentUserId }, account_verification_status: 'verified' },
-        select: 'name username profile_image.url is_online last_seen'
+        select: 'name username is_verified profile_image.url is_online last_seen'
       })
       .lean();
 
@@ -54,7 +54,7 @@ const getUsersForNewMessage = async (req, res) => {
           .sort({ is_online: -1, last_seen: -1, created_at: -1 })
           .skip(fallbackSkip)
           .limit(slotsThisPage)
-          .select('name username profile_image.url is_online last_seen')
+          .select('name is_verified username profile_image.url is_online last_seen')
           .lean()
       : [];
 

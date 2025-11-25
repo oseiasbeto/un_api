@@ -109,7 +109,7 @@ conversationSchema.statics.findOrCreateDirect = async function (userId1, userId2
       participants: sortedIds,
       last_message: {
         sender: userId1,
-        content: "Nova conversa",
+        content: "",
         message_type: "text",
         created_at: Date.now()
       }

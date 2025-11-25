@@ -69,7 +69,7 @@ const refreshAccessToken = async (req, res) => {
 
     // Busca o usuário associado ao ID contido no refresh token
     const user = await User.findById(decodedData.id).select(
-      "username name verified account_verification_status activity_status blocked_users gender posts_count subscribers following password player_id_onesignal following_count followers followers_count bio email website cover_photo profile_image unread_notifications_count unread_messages_count"
+      "username name is_verified account_verification_status activity_status blocked_users gender posts_count subscribers following password player_id_onesignal following_count followers followers_count bio email website cover_photo profile_image unread_notifications_count unread_messages_count"
     );
 
     // Se o usuário não for encontrado, retorna erro

@@ -14,7 +14,8 @@ const completeProfile = async (req, res) => {
             return res.status(400).json({ message: "Nome muito curto" });
         }
 
-        const user = await User.findById(userId);
+        const user = await User.findById(userId)
+        .select("name username phone_number profile_image is_verified")
         if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
         // Gera avatar automático se não tiver foto
@@ -34,13 +35,7 @@ const completeProfile = async (req, res) => {
 
         return res.status(200).json({
             message: "Perfil completo!",
-            user: {
-                _id: user._id,
-                name: user.name,
-                username: user.username,
-                phone_number: user.phone_number,
-                profile_image: user.profile_image
-            }
+            user
         });
 
     } catch (err) {

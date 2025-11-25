@@ -38,8 +38,8 @@ const getMessages = async (req, res) => {
       .sort({ created_at: -1 }) // mais recentes primeiro
       .skip(skip) // pular o número de itens já carregados
       .limit(limit) // limitar ao número por página
-      .populate('sender', 'name username profile_image activity_status') // popular dados do remetente
-      .populate('receiver', 'name username profile_image activity_status') // popular dados do destinatário
+      .populate('sender', 'name username profile_image is_verified activity_status') // popular dados do remetente
+      .populate('receiver', 'name username profile_image is_verified activity_status') // popular dados do destinatário
       .lean(); // Performance: evita overhead do Mongoose
 
 

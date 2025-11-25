@@ -18,7 +18,7 @@ const getConversations = async (req, res) => {
 
 
         // Filtro para mensagens da conversa
-        const filter = { participants: userId, archived: false };
+        const filter = { participants: userId, archived: false, 'last_message.content': { $ne: '' } };
 
         // Busca mensagens com paginação
         const conversations = await Conversation.find(filter)
@@ -27,7 +27,7 @@ const getConversations = async (req, res) => {
             .limit(limit) // limitar ao número por página   
             .sort({ pinned: -1, 'last_message.created_at': -1 })
             .populate([
-                { path: 'participants', select: 'name profile_image is_online last_seen' },
+                { path: 'participants', select: 'name profile_image is_verified is_online last_seen' },
                 { path: 'last_message.sender', select: 'name' },
                 { path: 'creator', select: 'name' }
             ])
@@ -51,6 +51,7 @@ const getConversations = async (req, res) => {
                 avatar: conv.type === 'direct' ? otherUser?.profile_image?.url : conv.avatar,
                 is_online: conv.type === 'direct' ? otherUser?.is_online : false,
                 last_seen: conv.type === 'direct' ? otherUser?.last_seen : null,
+                is_verified: conv.type === 'direct' ? otherUser?.is_verified : false,
                 last_message: conv.last_message ? {
                     ...(conv.type !== 'group' && {
                         sender: conv.last_message?.sender?.name
@@ -58,7 +59,6 @@ const getConversations = async (req, res) => {
                     content: conv.last_message.content || '[Foto]',
                     created_at: conv.last_message.created_at
                 } : null,
-
                 created_at: conv.created_at,
                 updated_at: conv.updated_at,
                 unread_count: unread,

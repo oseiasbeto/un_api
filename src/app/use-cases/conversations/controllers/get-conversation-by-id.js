@@ -15,7 +15,7 @@ const getConversationById = async (req, res) => {
 
         const conv = await Conversation.findById(convId)
             .populate([
-                { path: 'participants', select: 'name profile_image is_online last_seen' },
+                { path: 'participants', select: 'name is_verified profile_image is_online last_seen' },
                 { path: 'last_message.sender', select: 'name' },
                 { path: 'creator', select: 'name' }
             ])
@@ -34,6 +34,7 @@ const getConversationById = async (req, res) => {
             avatar: conv.type === 'direct' ? otherUser?.profile_image?.url : conv.avatar,
             is_online: conv.type === 'direct' ? otherUser?.is_online : false,
             last_seen: conv.type === 'direct' ? otherUser?.last_seen : null,
+            is_verified: conv.type === 'direct' ? otherUser?.is_verified : false,
             last_message: conv.last_message ? {
                 content: conv.last_message.content || '[Foto]',
                 created_at: conv.last_message.created_at

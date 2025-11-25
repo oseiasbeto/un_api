@@ -107,6 +107,7 @@ const userSchema = new mongoose.Schema(
     // === OUTROS ===
     is_deleted: { type: Boolean, default: false }, // soft delete
     deleted_at: { type: Date, default: null },
+    is_verified: {type: Boolean, default: false},
 
     blocked_users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     muted_conversations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Conversation" }],
