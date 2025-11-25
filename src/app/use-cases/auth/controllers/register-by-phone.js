@@ -38,7 +38,7 @@ const registerByPhone = async (req, res) => {
 
     await user.save();
     
-    senderMessage({ to: phone_number, message: `Seu código é: ${code}` })
+    //senderMessage({ to: phone_number, message: `Seu código é: ${code}` })
     console.log(`[SMS para ${phone_number}] Seu código é: ${code}`);
 
     return res.status(200).json({

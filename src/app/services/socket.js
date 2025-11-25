@@ -18,7 +18,7 @@ const initializeSocket = (server) => {
         cors: {
             origin: ['http://192.168.1.130:8080', 'https://www.1kole.com', 'https://1kole.com', 'http://localhost:8080'], // Permite conexões apenas do frontend rodando em localhost:8080
             methods: ['GET', 'POST'],        // Permite apenas os métodos GET e POST nas requisições WebSocket
-            credentials: true                // Permite envio de cookies e credenciais junto à requisição
+            //credentials: true                // Permite envio de cookies e credenciais junto à requisição
         }
     });
 
