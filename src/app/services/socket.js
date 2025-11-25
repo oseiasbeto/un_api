@@ -15,12 +15,11 @@ let io;
 const initializeSocket = (server) => {
     // Cria uma instância do servidor WebSocket e o associa ao servidor HTTP
     io = new Server(server, {
-        // Mantenha apenas estas configurações:
-        path: "/socket.io/",
-        transports: ['websocket', 'polling'],
-        pingTimeout: 60000,
-        pingInterval: 25000,
-        maxHttpBufferSize: 1e8
+        cors: {
+            origin: ['http://192.168.1.130:8080', 'https://www.1kole.com', 'https://1kole.com', 'http://localhost:8080'], // Permite conexões apenas do frontend rodando em localhost:8080
+            methods: ['GET', 'POST'],        // Permite apenas os métodos GET e POST nas requisições WebSocket
+            credentials: true                // Permite envio de cookies e credenciais junto à requisição
+        }
     });
 
     // Middleware de autenticação para validar o token JWT antes de permitir a conexão
