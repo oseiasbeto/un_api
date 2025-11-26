@@ -64,6 +64,7 @@ const initializeSocket = (server) => {
         // Evento disparado quando o cliente se desconecta do WebSocket
         socket.on('disconnect', async () => {
             try {
+                console.log(socket)
                 // Busca o usuário pelo socket_id e atualiza o status para "offline"
                 await User.findOneAndUpdate(
                     { socket_id: socket.id }, // Procura pelo usuário com este socket_id
