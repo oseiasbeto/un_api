@@ -37,60 +37,50 @@ const initializeSocket = (server) => {
         }
     });
 
-    // Evento disparado quando um cliente se conecta ao WebSocket
     io.on('connection', async (socket) => {
         const userId = socket.userId;
         console.log('Usuário conectado:', userId, socket.id);
 
+        let offlineTimer; // ← agora está fora do escopo
+
+        const scheduleOfflineCheck = () => {
+            clearTimeout(offlineTimer);
+            offlineTimer = setTimeout(async () => {
+                const user = await User.findById(userId);
+                if (!user) return;
+
+                const secondsSinceLastSeen = (Date.now() - new Date(user.last_seen)) / 1000;
+                if (secondsSinceLastSeen > 25) {
+                    await User.findByIdAndUpdate(userId, {
+                        is_online: false,
+                        socket_id: null,
+                        last_seen: new Date()
+                    });
+                    console.log(`Usuário ${userId} marcado como offline`);
+                    socket.broadcast.emit('userOffline', userId);
+                }
+            }, 30_000);
+        };
+
         try {
-            // 1. Marca como online imediatamente
             await User.findByIdAndUpdate(userId, {
                 is_online: true,
                 socket_id: socket.id,
                 last_seen: new Date()
             });
 
-            // Opcional: avisa os amigos que ele entrou
-            socket.broadcast.emit('userOnline', userId);
+            // Agenda o primeiro timer
+            scheduleOfflineCheck();
 
-            // 2. Recebe heartbeat do frontend (a cada ~15s)
+            // A cada heartbeat → atualiza last_seen e REAGENDA o timer
             socket.on('heartbeat', () => {
-                console.log("ping")
+                console.log("Heartbeat de", userId);
                 User.updateOne({ _id: userId }, { last_seen: new Date() }).catch(() => { });
+                scheduleOfflineCheck(); // ← ESSA LINHA É A CHAVE
             });
 
-            // 3. NÃO confie mais no 'disconnect' para marcar offline!
-            // Vamos marcar offline só quem não mandou heartbeat em > 25 segundos
-
-            const offlineTimer = setTimeout(async () => {
-                const user = await User.findById(userId);
-                if (!user) return;
-
-                const secondsSinceLastSeen = (Date.now() - new Date(user.last_seen)) / 1000;
-
-                if (secondsSinceLastSeen > 18) {
-                    await User.findByIdAndUpdate(userId, {
-                        is_online: false,
-                        socket_id: null,
-                        last_seen: new Date()
-                    });
-
-                    console.log(`Usuário ${userId} marcado como offline por inatividade`);
-                    socket.broadcast.emit('userOffline', userId);
-                }
-            }, 16_000); // checa após 30s de conexão
-
-            // Atualiza o timer a cada heartbeat (reinicia a contagem)
-            socket.on('heartbeat', () => {
-                clearTimeout(offlineTimer);
-                // Reagenda para 30s a partir de agora
-                // (se não chegar novo heartbeat em 30s, aí sim desloga)
-            });
-
-            // Se o socket cair de forma limpa (raro), já marca offline
             socket.on('disconnect', () => {
                 clearTimeout(offlineTimer);
-                // Aqui você pode marcar imediatamente ou deixar o timer fazer o trabalho
             });
 
         } catch (err) {
