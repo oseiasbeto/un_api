@@ -61,7 +61,7 @@ const initializeSocket = (server) => {
                 }
             }, 30_000);
 
-            console.log(offlineTimer)
+            console.log("Resetou o time")
         };
 
         try {
@@ -82,6 +82,7 @@ const initializeSocket = (server) => {
             });
 
             socket.on('disconnect', () => {
+                console.log("Usuario desconectado: ", userId)
                 clearTimeout(offlineTimer);
             });
 
