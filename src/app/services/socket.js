@@ -60,6 +60,8 @@ const initializeSocket = (server) => {
                     socket.broadcast.emit('userOffline', userId);
                 }
             }, 30_000);
+
+            console.log(offlineTimer)
         };
 
         try {
