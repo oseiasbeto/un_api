@@ -38,47 +38,65 @@ const initializeSocket = (server) => {
     });
 
     // Evento disparado quando um cliente se conecta ao WebSocket
-    io.on('connection', (socket) => {
-        console.log('Usuário conectado:', socket.id); // Exibe o ID do socket no console
+    io.on('connection', async (socket) => {
+        const userId = socket.userId;
+        console.log('Usuário conectado:', userId, socket.id);
 
-        // Evento personalizado "setUserOnline" para atualizar o status do usuário como "online"
-        socket.on('setUserOnline', async (userId) => {
-            try {
-                // Verifica se o userId enviado pelo cliente corresponde ao ID do usuário autenticado no token
-                if (userId !== socket.userId) {
-                    throw new Error('ID de usuário inválido');
-                }
-                // Atualiza o status do usuário no banco de dados para "online" e salva o socket_id
-                await User.findByIdAndUpdate(userId, {
-                    is_online: true,
-                    socket_id: socket.id,
-                    last_seen: moment()
-                });
+        try {
+            // 1. Marca como online imediatamente
+            await User.findByIdAndUpdate(userId, {
+                is_online: true,
+                socket_id: socket.id,
+                last_seen: new Date()
+            });
 
-                console.log(`Usuário ${userId} está online com socket ${socket.id}`);
-            } catch (error) {
-                console.error('Erro ao atualizar status:', error);
-            }
-        });
+            // Opcional: avisa os amigos que ele entrou
+            socket.broadcast.emit('userOnline', userId);
 
-        // Evento disparado quando o cliente se desconecta do WebSocket
-        socket.on('disconnect', async () => {
-            try {
-                // Busca o usuário pelo socket_id e atualiza o status para "offline"
-                await User.findOneAndUpdate(
-                    { socket_id: socket.id }, // Procura pelo usuário com este socket_id
-                    {
+            // 2. Recebe heartbeat do frontend (a cada ~15s)
+            socket.on('heartbeat', () => {
+                console.log("ping")
+                User.updateOne({ _id: userId }, { last_seen: new Date() }).catch(() => { });
+            });
+
+            // 3. NÃO confie mais no 'disconnect' para marcar offline!
+            // Vamos marcar offline só quem não mandou heartbeat em > 25 segundos
+
+            const offlineTimer = setTimeout(async () => {
+                const user = await User.findById(userId);
+                if (!user) return;
+
+                const secondsSinceLastSeen = (Date.now() - new Date(user.last_seen)) / 1000;
+
+                if (secondsSinceLastSeen > 25) {
+                    await User.findByIdAndUpdate(userId, {
                         is_online: false,
                         socket_id: null,
-                        last_seen: moment()
-                    }, // Define o status como offline e remove o socket_id
-                );
+                        last_seen: new Date()
+                    });
 
-                console.log('Usuário desconectado:', socket.id);
-            } catch (error) {
-                console.error('Erro ao desconectar:', error);
-            }
-        });
+                    console.log(`Usuário ${userId} marcado como offline por inatividade`);
+                    socket.broadcast.emit('userOffline', userId);
+                }
+            }, 30_000); // checa após 30s de conexão
+
+            // Atualiza o timer a cada heartbeat (reinicia a contagem)
+            socket.on('heartbeat', () => {
+                clearTimeout(offlineTimer);
+                // Reagenda para 30s a partir de agora
+                // (se não chegar novo heartbeat em 30s, aí sim desloga)
+            });
+
+            // Se o socket cair de forma limpa (raro), já marca offline
+            socket.on('disconnect', () => {
+                clearTimeout(offlineTimer);
+                // Aqui você pode marcar imediatamente ou deixar o timer fazer o trabalho
+            });
+
+        } catch (err) {
+            console.error('Erro na conexão socket:', err);
+            socket.disconnect();
+        }
     });
 
     return io; // Retorna a instância do servidor WebSocket para ser usada em outras partes do sistema
