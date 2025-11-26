@@ -68,7 +68,7 @@ const initializeSocket = (server) => {
 
                 const secondsSinceLastSeen = (Date.now() - new Date(user.last_seen)) / 1000;
 
-                if (secondsSinceLastSeen > 5) {
+                if (secondsSinceLastSeen > 18) {
                     await User.findByIdAndUpdate(userId, {
                         is_online: false,
                         socket_id: null,
@@ -78,7 +78,7 @@ const initializeSocket = (server) => {
                     console.log(`Usuário ${userId} marcado como offline por inatividade`);
                     socket.broadcast.emit('userOffline', userId);
                 }
-            }, 5_000); // checa após 30s de conexão
+            }, 16_000); // checa após 30s de conexão
 
             // Atualiza o timer a cada heartbeat (reinicia a contagem)
             socket.on('heartbeat', () => {
