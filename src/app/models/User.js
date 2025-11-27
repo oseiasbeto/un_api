@@ -59,22 +59,22 @@ const userSchema = new mongoose.Schema(
     privacy: {
       last_seen: {
         type: String,
-        enum: ["everybody", "contacts", "nobody"],
+        enum: ["everybody", "followers", "nobody"],
         default: "everybody"
       },
       profile_photo: {
         type: String,
-        enum: ["everybody", "contacts", "nobody"],
+        enum: ["everybody", "followers", "nobody"],
         default: "everybody"
       },
       phone_number: {
         type: String,
-        enum: ["everybody", "contacts", "nobody"],
-        default: "contacts"
+        enum: ["everybody", "followers", "nobody"],
+        default: "followers"
       },
       forwarded_messages: {
         type: String,
-        enum: ["everybody", "contacts", "nobody"],
+        enum: ["everybody", "followers", "nobody"],
         default: "everybody"
       }
     },

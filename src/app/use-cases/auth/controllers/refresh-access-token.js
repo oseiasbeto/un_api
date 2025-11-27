@@ -15,6 +15,8 @@ const moment = require("moment");
 // Importa o modelo de Sessão para gerenciar sessões de usuários
 const Session = require("../../../models/Session");
 
+const { getIO } = require("../../../services/socket");
+
 // Função responsável por atualizar o token de acesso com base em um refresh token válido
 const refreshAccessToken = async (req, res) => {
   try {
@@ -108,6 +110,12 @@ const refreshAccessToken = async (req, res) => {
     // Atualiza o activity_status como se fosse uma reconexão
     user.is_active = true;
     user.last_seen = moment();
+
+    const io = getIO()
+
+    if(io) {
+      io.emit("join_conversations")
+    }
     
     // Responde com o novo token de acesso e os dados do usuário transformados
     res.status(200).send({

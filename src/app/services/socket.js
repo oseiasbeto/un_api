@@ -9,7 +9,38 @@ const jwt = require('jsonwebtoken');
 // Importa o modelo de usuário do banco de dados (Mongoose)
 const User = require('../models/User');
 
+const Conversation = require('../models/Conversation');
+
+// No topo do arquivo socket.js
+const conversationCache = new Map(); // { conversationId: { participants: [] } }
+
+const userSocketMap = new Map(); // { userId: socketId }
+
 let io;
+
+// Função para carregar conversa com cache
+async function getCachedConversation(conversationId) {
+    // Se já está em cache, retorna do cache
+    if (conversationCache.has(conversationId)) {
+        return conversationCache.get(conversationId);
+    }
+
+    // Se não está em cache, busca no banco
+    const conversation = await Conversation.findById(conversationId)
+        .select('participants')
+        .populate('participants', 'name is_online socket_id')
+        .lean();
+
+    if (conversation) {
+        // Salva no cache por 5 minutos
+        conversationCache.set(conversationId, conversation);
+        setTimeout(() => {
+            conversationCache.delete(conversationId);
+        }, 5 * 60 * 1000); // 5 minutos
+    }
+
+    return conversation;
+}
 
 // Função para inicializar o servidor WebSocket
 const initializeSocket = (server) => {
@@ -69,6 +100,39 @@ const initializeSocket = (server) => {
                 last_seen: new Date()
             });
 
+            // EVENTO: Entrar nas salas das conversas ativas
+            socket.on('join_conversations', async () => {
+                try {
+                    // Busca todas as conversas do usuário (apenas IDs)
+                    const conversations = await Conversation.find({
+                        participants: userId,
+                        'last_message.content': { $ne: '' },
+                        type: 'group'
+                    }).select('_id').lean();
+
+                    // Entra em cada sala
+                    conversations.forEach(conv => {
+                        socket.join(conv._id.toString());
+                    });
+
+                    console.log(`Usuário ${userId} entrou em ${conversations.length} conversas`);
+                } catch (error) {
+                    console.error('Erro ao entrar nas conversas:', error);
+                }
+            })
+
+            // EVENTO: Entrar em uma conversa específica
+            socket.on('join_conversation', (conversationId) => {
+                socket.join(conversationId);
+                console.log(`Usuário ${userId} entrou na conversa: ${conversationId}`);
+            });
+
+            // EVENTO: Sair de uma conversa
+            socket.on('leave_conversation', (conversationId) => {
+                socket.leave(conversationId);
+                console.log(`Usuário ${userId} saiu da conversa: ${conversationId}`);
+            });
+
             // Agenda o primeiro timer
             scheduleOfflineCheck();
 
@@ -77,6 +141,53 @@ const initializeSocket = (server) => {
                 console.log("Heartbeat de", userId);
                 User.updateOne({ _id: userId }, { last_seen: new Date() }).catch(() => { });
                 scheduleOfflineCheck(); // ← ESSA LINHA É A CHAVE
+            });
+
+            // Quando usuário começa a digitar
+            socket.on('typing_start', async (convId) => {
+
+                console.log(`Usuário ${userId} começou a digitar na conversa ${convId}`);
+
+                // Usa cache em vez de consulta direta
+                const conversation = await getCachedConversation(convId);
+                if (!conversation) return;
+
+                conversation.participants.forEach(async participant => {
+                    const isSender = participant._id.toString() === userId;
+
+                    if (isSender || !participant.is_online) return
+
+                    socket.to(participant.socket_id).emit('user_typing_start', {
+                        userId: userId,
+                        convId: convId,
+                        isTyping: true
+                    });
+                })
+
+                console.log(`Emitindo typing_start para conversa ${convId}`);
+            });
+
+            // Quando usuário para de digitar
+            socket.on('typing_stop', async (convId) => {
+
+                console.log(`Usuário ${userId} parou de digitar na conversa ${convId}`);
+
+                // Usa cache em vez de consulta direta
+                const conversation = await getCachedConversation(convId);
+                if (!conversation) return;
+
+                conversation.participants.forEach(async participant => {
+                    const isSender = participant._id.toString() === userId;
+
+                    if (isSender || !participant.is_online) return
+
+                    socket.to(participant.socket_id).emit('user_typing_stop', {
+                        userId: userId,
+                        convId: convId,
+                        isTyping: true
+                    });
+                })
+                console.log(`Emitindo typing_stop para conversa ${convId}`);
             });
 
             socket.on('disconnect', () => {
@@ -101,5 +212,20 @@ const getIO = () => {
     return io;
 };
 
+// Função auxiliar para emitir para uma sala (útil para outros controllers)
+const emitToRoom = (roomId, event, data) => {
+    if (io) {
+        io.to(roomId).emit(event, data);
+    }
+};
+
+// Função auxiliar para emitir para um usuário específico (para compatibilidade)
+const emitToUser = (userId, event, data) => {
+    const socketId = userSocketMap.get(userId);
+    if (socketId && io) {
+        io.to(socketId).emit(event, data);
+    }
+};
+
 // Exporta a função initializeSocket para ser utilizada em outros arquivos do projeto
-module.exports = { initializeSocket, getIO };
+module.exports = { initializeSocket, getIO, emitToRoom, emitToUser };

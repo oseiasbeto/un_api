@@ -29,13 +29,8 @@ const sendMessage = async (req, res) => {
       return res.status(403).json({ message: "Você não faz parte desta conversa" });
     }
 
-    // Para canais de transmissão: só criador/admins podem enviar
-    if (conversation.type === 'channel' && conversation.is_broadcast) {
-      // Futuro: você pode ter um array de admins
-      if (conversation.creator.toString() !== senderId) {
-        return res.status(403).json({ message: "Você não tem permissão para postar neste canal" });
-      }
-    }
+    const otherUser = conversation?.last_message?.content === "" ? conversation.participants.find(p => p._id.toString() === senderId)
+      : conversation.participants.find(p => p._id.toString() !== senderId)
 
     // 2. Cria a mensagem (agora com conversation!)
     const message = await Message.create({
@@ -87,8 +82,6 @@ const sendMessage = async (req, res) => {
     conversation.unread_count.set(senderId, 0);
 
     await conversation.save();
-
-    const otherUser = conversation.participants.find(p => p._id.toString() !== senderId)
 
     // 5. Emite para todos os participantes online
     const io = getIO();
@@ -159,7 +152,7 @@ const sendMessage = async (req, res) => {
       };
 
       if (participant.socket_id) {
-        io.to(participant.socket_id).emit('newMessage', msg);
+        io.to(participant.socket_id).emit('new_message', msg);
       } else {
         if (participant?.player_id_onesignal) {
           await sendPushNotification({
