@@ -36,12 +36,33 @@ const userSchema = new mongoose.Schema(
       }
     },
 
+    // DESCRIÇÃO DO USUÁRIO / BIO ===
     bio: {
       type: String,
       maxlength: [160, "Bio máxima de 160 caracteres"],
       default: ""
     },
-    
+
+    // === RECOMPENSAS E MOEDAS ===
+    coin_balance: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+
+    // total de recompensas ganhas ao longo do tempo
+    total_rewards_earned: {
+      type: Number,
+      default: 0
+    },
+
+    // total de moedas convertidas em dinheiro real
+    total_coins_converted: {
+      type: Number,
+      default: 0
+    },
+
+    // status da verificação de conta (KYC)
     account_verification_status: {
       type: String,
       enum: ["pending", "verified"],
@@ -53,6 +74,8 @@ const userSchema = new mongoose.Schema(
     last_seen: { type: Date, default: null },
     socket_id: { type: String, default: null },
 
+
+    // === NOTIFICAÇÕES PUSH ===
     player_id_onesignal: { type: String, default: null },
 
     // === PRIVACIDADE (como no Telegram) ===
@@ -69,12 +92,12 @@ const userSchema = new mongoose.Schema(
       },
       phone_number: {
         type: String,
-        enum: ["everybody", "followers", "nobody"],
-        default: "followers"
+        enum: ["everybody", "contacts", "nobody"],
+        default: "contacts"
       },
       forwarded_messages: {
         type: String,
-        enum: ["everybody", "followers", "nobody"],
+        enum: ["everybody", "contacts", "nobody"],
         default: "everybody"
       }
     },
@@ -107,7 +130,7 @@ const userSchema = new mongoose.Schema(
     // === OUTROS ===
     is_deleted: { type: Boolean, default: false }, // soft delete
     deleted_at: { type: Date, default: null },
-    is_verified: {type: Boolean, default: false},
+    is_verified: { type: Boolean, default: false },
 
     blocked_users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     muted_conversations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Conversation" }],
