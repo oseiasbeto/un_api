@@ -27,7 +27,7 @@ const getConversations = async (req, res) => {
             .limit(limit) // limitar ao número por página   
             .sort({ pinned: -1, 'last_message.created_at': -1 })
             .populate([
-                { path: 'participants', select: 'name profile_image is_verified is_online last_seen' },
+                { path: 'participants', select: 'name profile_image username is_verified is_online last_seen' },
                 { path: 'last_message.sender', select: 'name' },
                 { path: 'creator', select: 'name' }
             ])
@@ -48,6 +48,7 @@ const getConversations = async (req, res) => {
                 _id: conv._id,
                 type: conv.type,
                 name: conv.type === 'direct' ? otherUser?.name || 'Usuário' : conv.name,
+                username: conv.type === 'direct' ? otherUser?.username || '@' : conv.username,
                 avatar: conv.type === 'direct' ? otherUser?.profile_image?.url : conv.avatar,
                 is_online: conv.type === 'direct' ? otherUser?.is_online : false,
                 last_seen: conv.type === 'direct' ? otherUser?.last_seen : null,

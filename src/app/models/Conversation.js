@@ -1,6 +1,5 @@
 // models/Conversation.js
 const mongoose = require('mongoose')
-const Message = require('./Message')
 
 const conversationSchema = new mongoose.Schema({
   // Tipo de conversa
@@ -98,7 +97,7 @@ conversationSchema.statics.findOrCreateDirect = async function (userId1, userId2
     type: 'direct',
     participants: { $all: sortedIds, $size: 2 }
   }).populate([
-    { path: 'participants', select: 'name profile_image is_online last_seen' },
+    { path: 'participants', select: 'name username profile_image is_online last_seen' },
     { path: 'last_message.sender', select: 'name' },
     { path: 'creator', select: 'name' }
   ])
@@ -118,7 +117,7 @@ conversationSchema.statics.findOrCreateDirect = async function (userId1, userId2
       const convPopulated = await this.findOne({
         _id: query._id
       }).populate([
-        { path: 'participants', select: 'name profile_image is_online last_seen' },
+        { path: 'participants', select: 'name username profile_image is_online last_seen' },
         { path: 'last_message.sender', select: 'name' },
         { path: 'creator', select: 'name' }
       ])
@@ -133,6 +132,7 @@ conversationSchema.statics.findOrCreateDirect = async function (userId1, userId2
     _id: conv._id,
     type: conv.type,
     name: otherUser?.name,
+    username: otherUser?.username,
     avatar: otherUser?.profile_image?.url,
     is_online: otherUser?.is_online || false,
     last_seen: otherUser?.last_seen || null,
