@@ -1,11 +1,24 @@
 // Importa a classe Server do socket.io para criar um servidor WebSocket
 const { Server } = require('socket.io');
 
+const moment = require("moment")
+
 // Importa o módulo jsonwebtoken para verificar tokens JWT
 const jwt = require('jsonwebtoken');
 
 // Importa o modelo de usuário do banco de dados (Mongoose)
 const User = require('../models/User');
+
+const Conversation = require('../models/Conversation');
+const getActiveConversations = require('../helpers/get-active-conversations');
+
+// No topo do arquivo socket.js
+const conversationCache = new Map(); // { conversationId: { participants: [] } }
+
+const userSocketMap = new Map(); // { userId: socketId }
+
+let io;
+
 
 // Função para inicializar o servidor WebSocket
 const initializeSocket = (server) => {
@@ -39,6 +52,7 @@ const initializeSocket = (server) => {
 
         let offlineTimer; // ← agora está fora do escopo
 
+        // Função para agendar a verificação de offline
         const scheduleOfflineCheck = () => {
             clearTimeout(offlineTimer);
             offlineTimer = setTimeout(async () => {
@@ -58,6 +72,7 @@ const initializeSocket = (server) => {
             }, 30_000);
         };
 
+        // Marca o usuário como online ao conectar
         try {
             await User.findByIdAndUpdate(userId, {
                 is_online: true,
@@ -65,28 +80,76 @@ const initializeSocket = (server) => {
                 last_seen: new Date()
             });
 
-            // Agenda o primeiro timer
-            scheduleOfflineCheck();
+            const conversations = await getActiveConversations(userId, 50);
 
-            // A cada heartbeat → atualiza last_seen e REAGENDA o timer
-            socket.on('heartbeat', () => {
-                console.log("Heartbeat de", userId);
-                User.updateOne({ _id: userId }, { last_seen: new Date() }).catch(() => { });
-                scheduleOfflineCheck(); // ← ESSA LINHA É A CHAVE
+            // 3. Entrar nas salas das conversas
+            conversations.forEach(conversation => {
+                socket.join(conversation._id.toString());
             });
 
-            socket.on('disconnect', () => {
-                console.log("Usuário desconectado:", userId)
-                clearTimeout(offlineTimer);
-            });
+            console.log(`Usuário ${userId} entrou nas conversas ativas:`, conversations.length);
 
-        } catch (err) {
-            console.error('Erro na conexão socket:', err);
-            socket.disconnect();
-        }
+    // EVENTO: Entrar em uma conversa específica
+    socket.on('join_conversation', (conversationId) => {
+        socket.join(conversationId);
+        console.log(`Usuário ${userId} entrou na conversa: ${conversationId}`);
     });
 
-    return io; // Retorna a instância do servidor WebSocket para ser usada em outras partes do sistema
+    // EVENTO: Sair de uma conversa
+    socket.on('leave_conversation', (conversationId) => {
+        socket.leave(conversationId);
+        console.log(`Usuário ${userId} saiu da conversa: ${conversationId}`);
+    });
+
+    // Agenda o primeiro timer
+    scheduleOfflineCheck();
+
+    // A cada heartbeat → atualiza last_seen e REAGENDA o timer
+    socket.on('heartbeat', () => {
+        console.log("Heartbeat de", userId);
+        User.updateOne({ _id: userId }, { last_seen: new Date() }).catch(() => { });
+        scheduleOfflineCheck(); // ← ESSA LINHA É A CHAVE
+    });
+
+    // Quando usuário começa a digitar
+    socket.on('typing_start', async (convId) => {
+
+        console.log(`Usuário ${userId} começou a digitar na conversa ${convId}`);
+        socket.to(convId).emit('user_typing_start', {
+            userId: userId,
+            convId: convId,
+            isTyping: true
+        });
+
+        console.log(`Emitindo typing_start para conversa ${convId}`);
+    });
+
+    // Quando usuário para de digitar
+    socket.on('typing_stop', async (convId) => {
+
+        console.log(`Usuário ${userId} parou de digitar na conversa ${convId}`);
+
+        socket.to(convId).emit('user_typing_stop', {
+            userId: userId,
+            convId: convId,
+            isTyping: true
+        });
+        
+        console.log(`Emitindo typing_stop para conversa ${convId}`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log("Usuário desconectado:", userId)
+        clearTimeout(offlineTimer);
+    });
+
+} catch (err) {
+    console.error('Erro na conexão socket:', err);
+    socket.disconnect();
+}
+    });
+
+return io; // Retorna a instância do servidor WebSocket para ser usada em outras partes do sistema
 };
 
 // Função para acessar a instância io em outros módulos
@@ -97,5 +160,20 @@ const getIO = () => {
     return io;
 };
 
+// Função auxiliar para emitir para uma sala (útil para outros controllers)
+const emitToRoom = (roomId, event, data) => {
+    if (io) {
+        io.to(roomId).emit(event, data);
+    }
+};
+
+// Função auxiliar para emitir para um usuário específico (para compatibilidade)
+const emitToUser = (userId, event, data) => {
+    const socketId = userSocketMap.get(userId);
+    if (socketId && io) {
+        io.to(socketId).emit(event, data);
+    }
+};
+
 // Exporta a função initializeSocket para ser utilizada em outros arquivos do projeto
-module.exports = { initializeSocket, getIO };
+module.exports = { initializeSocket, getIO, emitToRoom, emitToUser };

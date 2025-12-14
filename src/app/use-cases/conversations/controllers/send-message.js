@@ -1,7 +1,7 @@
 // controllers/messageController.js
 const Message = require('../../../models/Message');
 const Conversation = require('../../../models/Conversation');
-const { getIO } = require("../../../services/socket");
+const { getIO, emitToRoom } = require("../../../services/socket");
 const sendPushNotification = require("../../../services/send-push-notification");
 
 const sendMessage = async (req, res) => {
@@ -115,6 +115,7 @@ const sendMessage = async (req, res) => {
       reply_to: populatedMessage.reply_to
     };
 
+    /* 
     conversation.participants.forEach(async participant => {
       const isSender = participant._id.toString() === senderId;
 
@@ -162,8 +163,10 @@ const sendMessage = async (req, res) => {
           })
         }
       }
-    });
+    });*/
 
+
+    emitToRoom(conversation._id.toString(), 'new_message', messageToSend); 
     return res.status(201).json({
       message: "Mensagem enviada com sucesso",
       data: {
